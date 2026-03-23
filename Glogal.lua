@@ -948,6 +948,8 @@ function placeEncounterCards(tiles, levels, bonfireTile, encounterSetNames)
                             })
                             if deck then
                                 deck.shuffle()
+                                -- Сохраняем GUID колоды, чтобы потом идентифицировать Core
+                                deck.setVar("sourceSet", setName)
                                 table.insert(decksByLevel[lvl], deck)
                                 print("[DEBUG] Добавлена колода уровня " .. lvl .. " из набора " .. setName)
                             else
@@ -963,6 +965,38 @@ function placeEncounterCards(tiles, levels, bonfireTile, encounterSetNames)
             end
         end
     end
+
+    -- === НОВАЯ ФИЛЬТРАЦИЯ: если есть дополнительные наборы, удаляем 6 карт из Core колод ===
+    local hasExtra = false
+    for _, name in ipairs(encounterSetNames) do
+        if name ~= "Core Encounters" then
+            hasExtra = true
+            break
+        end
+    end
+    if hasExtra then
+        for lvl = 1, 3 do
+            local coreDeck = nil
+            for _, deck in ipairs(decksByLevel[lvl]) do
+                if deck.getVar("sourceSet") == "Core Encounters" then
+                    coreDeck = deck
+                    break
+                end
+            end
+            if coreDeck then
+                for i = 1, 6 do
+                    local card = coreDeck.takeObject({ position = {0,0,0}, smooth = false })
+                    if card then
+                        card.destruct()
+                    else
+                        break
+                    end
+                end
+                print("[DEBUG] Из колоды Core уровня " .. lvl .. " удалено 6 карт")
+            end
+        end
+    end
+    -- =========================================================
 
     local bonfirePos = bonfireTile.getPosition()
     local sortedTiles = {}
@@ -1121,6 +1155,32 @@ end
 function extractRandomTiles(count, tileSetConfig)
     print("[DEBUG] extractRandomTiles: запрошено " .. count .. " тайлов")
     local candidates, innerBags = collectTileCandidates(tileSetConfig)
+
+    -- === НОВАЯ ФИЛЬТРАЦИЯ: если выбраны другие наборы, убираем 3 случайных Core тайла ===
+    if tileSetConfig.core and (tileSetConfig.darkwood or tileSetConfig.ironkeep or tileSetConfig.extra) then
+        local coreCandidates = {}
+        local otherCandidates = {}
+        for _, cand in ipairs(candidates) do
+            if cand.sourceBag == "Core Map Tiles" then
+                table.insert(coreCandidates, cand)
+            else
+                table.insert(otherCandidates, cand)
+            end
+        end
+        shuffleTable(coreCandidates)
+        local keepCount = math.max(0, #coreCandidates - 3)
+        local filteredCore = {}
+        for i = 1, keepCount do
+            table.insert(filteredCore, coreCandidates[i])
+        end
+        candidates = filteredCore
+        for _, cand in ipairs(otherCandidates) do
+            table.insert(candidates, cand)
+        end
+        print("[DEBUG] Из Core набора удалено " .. (#coreCandidates - keepCount) .. " тайлов")
+    end
+    -- =========================================================
+
     if #candidates < count then
         broadcastToAll("Недостаточно тайлов! Требуется " .. count .. ", доступно " .. #candidates, { 1, 0, 0 })
         for _, bag in ipairs(innerBags) do
@@ -1525,6 +1585,15 @@ function setupStandardGame(args)
     local playerCount = args[3]
     local tileSetNames = args[4] or { "Core Map Tiles" }
     local encounterSetNames = args[5] or { "Core Encounters" }
+
+    -- Core Encounters всегда используются
+    local allEncounterSets = {"Core Encounters"}
+    for _, name in ipairs(encounterSetNames) do
+        if name ~= "Core Encounters" then
+            table.insert(allEncounterSets, name)
+        end
+    end
+    encounterSetNames = allEncounterSets
 
     local tileSetConfig = {
         core = false,

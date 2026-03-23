@@ -1,5 +1,5 @@
 -- ============================================
--- СКРИПТ ДЛЯ ОБЪЕКТА-ПАНЕЛИ НАСТРОЕК (исправленный)
+-- СКРИПТ ДЛЯ ОБЪЕКТА-ПАНЕЛИ НАСТРОЕК (исправленный, Core Encounters всегда активны)
 -- ============================================
 
 -- Глобальные переменные (без local)
@@ -7,7 +7,7 @@ selectedMiniBoss = "Asylum Demon"
 selectedMainBoss = "Artorias"
 selectedCampaign = "A Hollow Pursuit"
 selectedTileSets = {"Core Map Tiles"}  -- по умолчанию выбран Core Tiles
-selectedEncounterSets = {"Core Encounters"}  -- по умолчанию Core Encounters
+selectedEncounterSets = {}              -- дополнительные наборы карт (Core Encounters всегда активны)
 currentPlayerCount = 2
 
 function onLoad()
@@ -37,6 +37,13 @@ end
 function openSetupUI()
     print("[DEBUG] openSetupUI вызвана")
     removeSettingsButton()
+
+    selectedMiniBoss = "Asylum Demon"
+    selectedMainBoss = "Artorias"
+    selectedCampaign = "A Hollow Pursuit"
+    selectedTileSets = {"Core Map Tiles"}  -- по умолчанию выбран Core Tiles
+    selectedEncounterSets = {}              -- дополнительные наборы карт (Core Encounters всегда активны)
+    currentPlayerCount = 2
 
     local bossData = Global.getTable("bossData")
     local campaignScenarios = Global.getTable("campaignScenarios")
@@ -152,12 +159,11 @@ function openSetupUI()
         </VerticalLayout>
     </Panel>
 
-    <!-- Панель выбора наборов карт стычек -->
+    <!-- Панель выбора дополнительных наборов карт стычек (Core всегда активны) -->
     <Panel id="encounterSetsPanel" active="true" color="#3a3a3a" padding="5" minHeight="50" preferredHeight="50">
         <VerticalLayout childForceExpandWidth="true" childForceExpandHeight="false" childAlignment="MiddleCenter">
-            <Text fontSize="16" color="white" alignment="MiddleCenter">Выберите наборы карт стычек:</Text>
+            <Text fontSize="16" color="white" alignment="MiddleCenter">Дополнительные наборы карт стычек:</Text>
             <HorizontalLayout spacing="10" childAlignment="MiddleCenter" childForceExpandWidth="true">
-                <Toggle id="setCoreEncounters" text="Core Encounters" textColor="white" isOn="true" onValueChanged="onEncounterSetSelected" flexibleWidth="1" minHeight="30" preferredHeight="30"/>
                 <Toggle id="setDarkrootEncounters" text="Darkroot Encounters" textColor="white" isOn="false" onValueChanged="onEncounterSetSelected" flexibleWidth="1" minHeight="30" preferredHeight="30"/>
                 <Toggle id="setIronKeepEncounters" text="Iron Keep Encounters" textColor="white" isOn="false" onValueChanged="onEncounterSetSelected" flexibleWidth="1" minHeight="30" preferredHeight="30"/>
                 <Toggle id="setExplorersEncounters" text="Explorers Encounters" textColor="white" isOn="false" onValueChanged="onEncounterSetSelected" flexibleWidth="1" minHeight="30" preferredHeight="30"/>
@@ -194,7 +200,7 @@ function openSetupUI()
 
     -- Небольшая задержка, чтобы UI успел отрисоваться
     Wait.time(function()
-        -- Устанавливаем состояния тогглов в соответствии с глобальным selectedTileSets
+        -- Устанавливаем состояния тогглов для наборов тайлов
         for _, setName in ipairs(selectedTileSets) do
             if setName == "Core Map Tiles" then
                 self.UI.setAttribute("setCore", "isOn", "true")
@@ -207,7 +213,7 @@ function openSetupUI()
             end
         end
 
-        -- Блокируем единственный выбранный набор, если он один
+        -- Блокируем единственный выбранный набор тайлов
         if #selectedTileSets == 1 then
             local onlyId = nil
             if selectedTileSets[1] == "Core Map Tiles" then
@@ -224,33 +230,14 @@ function openSetupUI()
             end
         end
 
-        -- Устанавливаем состояния тогглов для наборов карт стычек
+        -- Устанавливаем состояния тогглов для дополнительных наборов карт
         for _, setName in ipairs(selectedEncounterSets) do
-            if setName == "Core Encounters" then
-                self.UI.setAttribute("setCoreEncounters", "isOn", "true")
-            elseif setName == "Darkroot Encounters" then
+            if setName == "Darkroot Encounters" then
                 self.UI.setAttribute("setDarkrootEncounters", "isOn", "true")
             elseif setName == "Iron Keep Encounters" then
                 self.UI.setAttribute("setIronKeepEncounters", "isOn", "true")
             elseif setName == "Explorers Encounters" then
                 self.UI.setAttribute("setExplorersEncounters", "isOn", "true")
-            end
-        end
-
-        -- Блокируем единственный выбранный набор карт
-        if #selectedEncounterSets == 1 then
-            local onlyId = nil
-            if selectedEncounterSets[1] == "Core Encounters" then
-                onlyId = "setCoreEncounters"
-            elseif selectedEncounterSets[1] == "Darkroot Encounters" then
-                onlyId = "setDarkrootEncounters"
-            elseif selectedEncounterSets[1] == "Iron Keep Encounters" then
-                onlyId = "setIronKeepEncounters"
-            elseif selectedEncounterSets[1] == "Explorers Encounters" then
-                onlyId = "setExplorersEncounters"
-            end
-            if onlyId then
-                self.UI.setAttribute(onlyId, "interactable", "false")
             end
         end
     end, 0.1)  -- задержка 0.1 секунды
@@ -292,7 +279,7 @@ function onModeSelected(_, value, id)
     end
 end
 
--- Обработчик выбора набора тайлов (использует onValueChanged)
+-- Обработчик выбора набора тайлов
 function onTileSetSelected(_, value, id)
     print("[DEBUG] onTileSetSelected вызвана, id=" .. id .. ", value=" .. tostring(value))
     if value == "True" then
@@ -372,12 +359,11 @@ function onTileSetSelected(_, value, id)
     print("[DEBUG] Выбранные наборы тайлов: " .. table.concat(selectedTileSets, ", "))
 end
 
+-- Обработчик выбора дополнительных наборов карт стычек
 function onEncounterSetSelected(_, value, id)
     if value == "True" then
         -- Включаем набор
-        if id == "setCoreEncounters" then
-            table.insert(selectedEncounterSets, "Core Encounters")
-        elseif id == "setDarkrootEncounters" then
+        if id == "setDarkrootEncounters" then
             table.insert(selectedEncounterSets, "Darkroot Encounters")
         elseif id == "setIronKeepEncounters" then
             table.insert(selectedEncounterSets, "Iron Keep Encounters")
@@ -385,68 +371,37 @@ function onEncounterSetSelected(_, value, id)
             table.insert(selectedEncounterSets, "Explorers Encounters")
         end
     else
-        -- Выключаем, но только если это не последний
-        if #selectedEncounterSets > 1 then
-            if id == "setCoreEncounters" then
-                for i, name in ipairs(selectedEncounterSets) do
-                    if name == "Core Encounters" then
-                        table.remove(selectedEncounterSets, i)
-                        break
-                    end
-                end
-            elseif id == "setDarkrootEncounters" then
-                for i, name in ipairs(selectedEncounterSets) do
-                    if name == "Darkroot Encounters" then
-                        table.remove(selectedEncounterSets, i)
-                        break
-                    end
-                end
-            elseif id == "setIronKeepEncounters" then
-                for i, name in ipairs(selectedEncounterSets) do
-                    if name == "Iron Keep Encounters" then
-                        table.remove(selectedEncounterSets, i)
-                        break
-                    end
-                end
-            elseif id == "setExplorersEncounters" then
-                for i, name in ipairs(selectedEncounterSets) do
-                    if name == "Explorers Encounters" then
-                        table.remove(selectedEncounterSets, i)
-                        break
-                    end
+        -- Выключаем набор (без проверки на последний)
+        if id == "setDarkrootEncounters" then
+            for i, name in ipairs(selectedEncounterSets) do
+                if name == "Darkroot Encounters" then
+                    table.remove(selectedEncounterSets, i)
+                    break
                 end
             end
-        else
-            -- Нельзя выключить последний, возвращаем тогглу состояние true
-            self.UI.setAttribute(id, "isOn", "true")
-            return
+        elseif id == "setIronKeepEncounters" then
+            for i, name in ipairs(selectedEncounterSets) do
+                if name == "Iron Keep Encounters" then
+                    table.remove(selectedEncounterSets, i)
+                    break
+                end
+            end
+        elseif id == "setExplorersEncounters" then
+            for i, name in ipairs(selectedEncounterSets) do
+                if name == "Explorers Encounters" then
+                    table.remove(selectedEncounterSets, i)
+                    break
+                end
+            end
         end
     end
 
-    -- Обновляем interactable для единственного оставшегося тоггла
-    if #selectedEncounterSets == 1 then
-        local onlyId = nil
-        if selectedEncounterSets[1] == "Core Encounters" then
-            onlyId = "setCoreEncounters"
-        elseif selectedEncounterSets[1] == "Darkroot Encounters" then
-            onlyId = "setDarkrootEncounters"
-        elseif selectedEncounterSets[1] == "Iron Keep Encounters" then
-            onlyId = "setIronKeepEncounters"
-        elseif selectedEncounterSets[1] == "Explorers Encounters" then
-            onlyId = "setExplorersEncounters"
-        end
-        if onlyId then
-            self.UI.setAttribute(onlyId, "interactable", "false")
-        end
-    else
-        -- Разблокируем все
-        self.UI.setAttribute("setCoreEncounters", "interactable", "true")
-        self.UI.setAttribute("setDarkrootEncounters", "interactable", "true")
-        self.UI.setAttribute("setIronKeepEncounters", "interactable", "true")
-        self.UI.setAttribute("setExplorersEncounters", "interactable", "true")
-    end
+    -- Всегда разблокируем тогглы (игрок может отключить любой)
+    self.UI.setAttribute("setDarkrootEncounters", "interactable", "true")
+    self.UI.setAttribute("setIronKeepEncounters", "interactable", "true")
+    self.UI.setAttribute("setExplorersEncounters", "interactable", "true")
 
-    print("[DEBUG] Выбранные наборы карт стычек: " .. table.concat(selectedEncounterSets, ", "))
+    print("[DEBUG] Выбранные дополнительные наборы карт стычек: " .. table.concat(selectedEncounterSets, ", "))
 end
 
 -- Обновление метки слайдера
