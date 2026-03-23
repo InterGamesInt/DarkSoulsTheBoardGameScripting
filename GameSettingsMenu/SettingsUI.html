@@ -1,0 +1,84 @@
+<VerticalLayout id="setupPanel" width="800" height="350" color="#2b2b2b" padding="10" rectAlignment="MiddleCenter" childForceExpandWidth="true" childForceExpandHeight="false" spacing="10" active="false">
+    <!-- Заголовок (простой элемент, не внутри layout group? Он прямой потомок VerticalLayout, поэтому нужно использовать layout attributes) -->
+    <Text fontSize="24" color="white" alignment="MiddleCenter" minHeight="40" preferredHeight="40" flexibleWidth="1">⚙️ Настройка игры Dark Souls</Text>
+
+    <!-- Переключатель режимов: HorizontalLayout как прямой потомок VerticalLayout -->
+    <HorizontalLayout spacing="20" minHeight="40" preferredHeight="40" childForceExpandWidth="true" childForceExpandHeight="false" childAlignment="MiddleCenter">
+        <Text fontSize="18" color="white" minWidth="200" minHeight="30" alignment="MiddleLeft">Режим игры:</Text>
+        <ToggleGroup id="modeGroup" flexibleWidth="1" minHeight="30" preferredHeight="30">
+            <HorizontalLayout childForceExpandWidth="false" childForceExpandHeight="false">
+                <Toggle id="standardToggle" text="Стандартный" isOn="true" onClick="onModeSelected" flexibleWidth="1" minHeight="30" preferredHeight="30" textColor="#FFFFFF"/>
+                <Toggle id="campaignToggle" text="Кампания" isOn="false" onClick="onModeSelected" flexibleWidth="1" minHeight="30" preferredHeight="30" textColor="#FFFFFF"/>
+            </HorizontalLayout>
+        </ToggleGroup>
+    </HorizontalLayout>
+
+    <!-- Панель стандартного режима (видима по умолчанию) -->
+    <Panel id="standardPanel" active="true" color="#3a3a3a" padding="10">
+        <VerticalLayout childForceExpandWidth="true" childForceExpandHeight="false" childAlignment="MiddleCenter" spacing="10">
+            <!-- Строка мини-босса: HorizontalLayout как потомок VerticalLayout внутри Panel -->
+            <HorizontalLayout spacing="10" minHeight="35" preferredHeight="35" childForceExpandWidth="true" childForceExpandHeight="false" childAlignment="MiddleCenter">
+                <Text fontSize="18" color="white" minWidth="200" alignment="MiddleLeft">Мини-босс:</Text>
+                <Dropdown id="miniBoss" flexibleWidth="1" minHeight="35" preferredHeight="35" scrollSensitivity="6">
+                </Dropdown>
+            </HorizontalLayout>
+            <!-- Строка главного босса -->
+            <HorizontalLayout spacing="10" minHeight="35" preferredHeight="35" childForceExpandWidth="true" childForceExpandHeight="false" childAlignment="MiddleCenter">
+                <Text fontSize="18" color="white" minWidth="200" preferredWidth="200" alignment="MiddleLeft">Главный босс:</Text>
+                <Dropdown id="mainBoss" flexibleWidth="1" minHeight="35" preferredHeight="35" scrollSensitivity="6">
+                </Dropdown>
+            </HorizontalLayout>
+        </VerticalLayout>
+    </Panel>
+
+    <!-- Панель кампании (скрыта по умолчанию) -->
+    <Panel id="campaignPanel" active="false" flexibleHeight="1" color="#3a3a3a" padding="10">
+        <HorizontalLayout spacing="10" minHeight="35" preferredHeight="35" childForceExpandWidth="true" childForceExpandHeight="false" childAlignment="MiddleCenter">
+            <Text fontSize="18" color="white" minWidth="200" preferredWidth="200" alignment="MiddleLeft">Сценарий:</Text>
+            <Dropdown id="campaignChoice" flexibleWidth="1" minHeight="35" preferredHeight="35" scrollSensitivity="100">
+            </Dropdown>
+        </HorizontalLayout>
+    </Panel>
+
+    <!-- ===== НОВАЯ ПАНЕЛЬ ВЫБОРА НАБОРОВ ТАЙЛОВ (видна только в стандартном режиме) ===== -->
+    <Panel id="tileSetsPanel" active="true" color="#2a2a2a" padding="5" minHeight="80" preferredHeight="80">
+        <VerticalLayout childForceExpandWidth="true" childForceExpandHeight="false" childAlignment="MiddleCenter">
+            <Text fontSize="16" color="white" alignment="MiddleCenter">Выберите наборы тайлов:</Text>
+            <HorizontalLayout spacing="10" childAlignment="MiddleCenter">
+                <Toggle id="setCore" text="Core Tiles" isOn="true" onClick="onTileSetSelected" minWidth="100" preferredWidth="100" minHeight="30" preferredHeight="30"/>
+                <Toggle id="setDarkwood" text="Darkwood Tiles" isOn="false" onClick="onTileSetSelected" minWidth="150" preferredWidth="150" minHeight="30" preferredHeight="30"/>
+                <Toggle id="setIronKeep" text="Iron Keep Tiles" isOn="false" onClick="onTileSetSelected" minWidth="150" preferredWidth="150" minHeight="30" preferredHeight="30"/>
+                <Toggle id="setExtra" text="Extra Map Tiles" isOn="false" onClick="onTileSetSelected" minWidth="100" preferredWidth="100" minHeight="30" preferredHeight="30"/>
+            </HorizontalLayout>
+        </VerticalLayout>
+    </Panel>
+
+    <!-- Количество игроков -->
+    <HorizontalLayout spacing="10" minHeight="40" preferredHeight="40" childForceExpandWidth="false" childForceExpandHeight="false" childAlignment="MiddleCenter">
+        <Text fontSize="18" color="white" minHeight="40" preferredHeight="40" alignment="MiddleLeft">Количество игроков:</Text>
+        <!-- Минимум (1) -->
+        <Text fontSize="14" color="gray" minWidth="20" preferredWidth="20" alignment="MiddleRight">1</Text>
+        <!-- Слайдер -->
+        <Slider id="playerCount"
+            minValue="1"
+            maxValue="4"
+            value="2"
+            flexibleWidth="1"
+            minHeight="20"
+            preferredHeight="20"
+            wholeNumbers="true"
+            backgroundColor="#3a3a3a"
+            onValueChanged="updatePlayerCountLabel"
+        />
+        <!-- Максимум (4) -->
+        <Text fontSize="14" color="gray" minWidth="20" preferredWidth="20" alignment="MiddleLeft">4</Text>
+        <!-- Отображение текущего значения -->
+        <Text id="playerCountLabel" fontSize="18" color="white" minWidth="20" preferredWidth="20" alignment="MiddleCenter">2</Text>
+    </HorizontalLayout>
+
+    <!-- Кнопки -->
+    <HorizontalLayout spacing="20" minHeight="50" preferredHeight="50" childForceExpandWidth="true" childForceExpandHeight="false">
+        <Button onClick="applySetup" flexibleWidth="1" minHeight="40" preferredHeight="40" color="#4CAF50">Применить и начать</Button>
+        <Button onClick="closeUI" flexibleWidth="1" minHeight="40" preferredHeight="40" color="#f44336">Закрыть</Button>
+    </HorizontalLayout>
+</VerticalLayout>
