@@ -1585,6 +1585,9 @@ function setupStandardGame(args)
     local playerCount = args[3]
     local tileSetNames = args[4] or { "Core Map Tiles" }
     local encounterSetNames = args[5] or { "Core Encounters" }
+    local treasureSetNames = args[6] or {}
+    pendingTreasureSets = treasureSetNames
+    pendingPlayerCount = playerCount
 
     -- Core Encounters всегда используются
     local allEncounterSets = {"Core Encounters"}
@@ -1910,6 +1913,7 @@ function confirmCharacter(player, _, _)
 
     playerChoices[color] = selected
     broadcastToAll("Игрок " .. tostring(color) .. " выбрал: " .. selected)
+    print(playerChoices[color])
     selected = nil
 
     local currentVis = self.UI.getAttribute("charSelectionPanel", "visibility") or ""
@@ -1927,6 +1931,7 @@ function confirmCharacter(player, _, _)
 
     if newVis == "" then
         self.UI.setXml("")
+        print("[DEBUG] characterChoices: " .. table.concat(playerChoices, ", "))
         setupCharacters(playerChoices)
     end
 end
@@ -2263,6 +2268,232 @@ function setupCharacters(characterChoices)
     end
 
     broadcastToAll("Стол подготовлен, можно начинать игру!", {0,1,0})
+
+    print("[DEBUG] characterChoices: " .. table.concat(characterChoices, ", "))
+
+    local treasureSets = pendingTreasureSets or {}
+    setupTreasureDeck(treasureSets, characterChoices, pendingPlayerCount)
+end
+
+-- ============================================
+-- КОЛОДА СОКРОВИЩ
+-- ============================================
+
+-- GUID контейнеров с колодами сокровищ
+treasureContainers = {
+    ["Core"] = "b303c6",              -- Core Treasure (60 карт)
+    ["Darkroot"] = "147a59",          -- Darkroot Treasure (15 карт)
+    ["Explorers"] = "0e63b8",         -- Explorers Treasure (15 карт)
+    ["IronKeep"] = "870327",          -- Iron Keep Treasure (15 карт)
+    ["Characters"] = "c5c152",        -- Characters Treasure (10 карт)
+    ["CharactersLegendary"] = "fea972" -- Characters Legendary Treasure (10 карт)
+}
+
+-- Вспомогательная функция для проверки наличия элемента в таблице
+function tableContains(tbl, val)
+    for _, v in ipairs(tbl) do
+        if v == val then return true end
+    end
+    return false
+end
+
+-- Извлекает колоду из бесконечного контейнера по GUID
+function extractDeckFromContainer(containerGUID)
+    local container = getObjectFromGUID(containerGUID)
+    if not container then
+        print("[ERROR] Контейнер не найден: " .. containerGUID)
+        return nil
+    end
+    local contained = container.getData().ContainedObjects
+    if #contained == 0 then
+        print("[WARN] Контейнер " .. containerGUID .. " пуст")
+        return nil
+    end
+    local deck = container.takeObject({ index = contained[1].index, position = {0, 10, 0}, smooth = false })
+    if #deck.getObjects() == 60 then
+        deck.setPosition({0, 10, 0})
+    else
+        deck.setPosition({0,10.1, 0})
+    end
+    if deck then
+        deck.locked = true   -- блокируем, чтобы не сливалась
+    end
+    return deck
+end
+
+-- Удаляет указанное количество карт из колоды (сверху) и уничтожает их
+function removeTopCardsFromDeck(deck, count)
+    deck.shuffle()
+    if not deck then return end
+    for i = 1, count do
+        local card = deck.takeObject({ position = {0, 0, 0}, smooth = false })
+        if card then
+            card.destruct()
+        else
+            print("[DEBUG] Cards Removed From Core!")
+            break
+        end
+    end
+end
+
+-- Собирает все карты из нескольких колод в одну новую колоду
+function combineDecksIntoOne(deckObjects)
+    -- Разблокируем все колоды
+    for _, deck in ipairs(deckObjects) do
+        if deck then
+            deck.locked = false
+        end
+    end
+end
+
+-- Функция для выбора карт персонажа (упрощённая, добавляет всю колоду Characters Treasure)
+function addCharacterTreasure(deck, isLegendary)
+    -- В упрощённой версии просто возвращаем колоду как есть
+    return deck
+end
+
+-- Основная функция создания колоды сокровищ
+function setupTreasureDeck(treasureSetNames, characterChoices, playerCount)
+    print("[DEBUG] Формирование колоды сокровищ")
+    for _, treasureSet in ipairs(treasureSetNames) do
+        print("[DEBUG] Treasure Set Name: " .. tostring(treasureSet))
+    end
+    for color, char in pairs(characterChoices) do
+        print("[DEBUG] " .. tostring(color) .. " choice: " .. tostring(char))
+    end
+    print("[DEBUG] playerCount: " .. tostring(playerCount))
+    local allDecks = {}
+
+    -- 1. Core Treasure
+    local coreDeck = extractDeckFromContainer(treasureContainers["Core"])
+    if not coreDeck then
+        print("[ERROR] Не удалось извлечь Core Treasure")
+        return
+    end
+    coreDeck.shuffle()
+    table.insert(allDecks, coreDeck)
+
+    -- 2. Дополнительные наборы: удаляем из Core по 15 карт за каждый набор и добавляем сами колоды
+    local extraBags = {}
+    if tableContains(treasureSetNames, "Darkroot Treasure") then
+        table.insert(extraBags, treasureContainers["Darkroot"])
+    end
+    if tableContains(treasureSetNames, "Iron Keep Treasure") then
+        table.insert(extraBags, treasureContainers["IronKeep"])
+    end
+    if tableContains(treasureSetNames, "Explorers Treasure") then
+        table.insert(extraBags, treasureContainers["Explorers"])
+    end
+    if #extraBags > 0 then
+        print("[DEBUG] working with extras")
+        -- Удаляем 15 карт из Core за каждый набор
+        removeTopCardsFromDeck(coreDeck, 15 * #extraBags)
+        -- Добавляем колоды из дополнительных наборов
+        for _, bagGuid in ipairs(extraBags) do
+            local deck = extractDeckFromContainer(bagGuid)
+            if deck then
+                deck.shuffle()
+                table.insert(allDecks, deck)
+            end
+        end
+        print("[DEBUG] Work with extras finished!")
+    end
+
+    -- 3. Классовые сокровища для каждого выбранного персонажа (вторая колода)
+    for color, charName in pairs(characterChoices) do
+        local charDecksGUID = containers[charName].Decks
+        if charDecksGUID then
+            local outerBag = getObjectFromGUID(charDecksGUID)
+            if outerBag then
+                local innerBagsData = outerBag.getData().ContainedObjects
+                if #innerBagsData >= 1 then
+                    local innerBag = outerBag.takeObject({ index = innerBagsData[1].index, position = {0, 10, 0}, smooth = false })
+                    if innerBag then
+                        -- Получаем данные о содержимом внутренней сумки (колоды)
+                        local decksData = innerBag.getObjects()
+                        local classDeck = nil
+                        for _, deckData in ipairs(decksData) do
+                            local deckName = deckData.Nickname or ""
+                            -- Ищем колоду, содержащую "Class Treasures" (настройте под ваш мод)
+                            if deckName == "Class Treasures" then
+                                -- Если нашли колоду с таким именем, извлекаем её
+                                classDeck = innerBag.takeObject({ index = deckData.index, position = {0, 10, 0}, smooth = false })
+                                break
+                            end
+                        end
+                        -- Если не нашли по имени, пробуем взять вторую по порядку (запасной вариант)
+                        if not classDeck and #decksData >= 2 then
+                            classDeck = innerBag.takeObject({ index = decksData[2].index, position = {0, 10, 0}, smooth = false })
+                            print("[WARN] Классовая колода для " .. charName .. " взята по индексу 2")
+                        end
+                        if classDeck then
+                            classDeck.shuffle()
+                            table.insert(allDecks, classDeck)
+                        end
+                        innerBag.destruct()
+                    end
+                end
+            end
+        end
+    end
+
+    -- 4. Characters Treasure (выбор случайного игрока, пока добавляем всю колоду)
+    if tableContains(treasureSetNames, "Characters Treasure") then
+        -- Определяем случайного активного игрока
+        local activeColors = {}
+        for _, player in ipairs(Player.getPlayers()) do
+            local color = player.color
+            if color == "White" or color == "Green" or color == "Red" or color == "Blue" then
+                table.insert(activeColors, color)
+            end
+        end
+        if #activeColors > 0 then
+            local chosenColor = activeColors[math.random(#activeColors)]
+            print("[DEBUG] Игрок " .. chosenColor .. " будет выбирать карты персонажа")
+            -- В упрощённой версии просто добавляем колоду Characters Treasure
+            local charDeck = extractDeckFromContainer(treasureContainers["Characters"])
+            if charDeck then
+                charDeck.shuffle()
+                table.insert(allDecks, charDeck)
+            end
+            -- Если нужно добавить легендарные карты, потребуется дополнительная логика
+        end
+    end
+
+    -- 5. Объединяем все колоды
+    combineDecksIntoOne(allDecks)
+    local finalDeck = allDecks[1]
+    if not finalDeck then
+        print("[ERROR] Не удалось создать колоду сокровищ")
+        return
+    end
+
+    Wait.time(function()
+        -- 6. Размещаем на костре
+        local bonfireTile = findObjectByName("Bonfire Tile")
+        if bonfireTile then
+            local snapPoints = bonfireTile.getSnapPoints()
+            local treasurePoint = nil
+            for _, point in ipairs(snapPoints) do
+                if point.tags and point.tags[1] == "TreasureDeck" then
+                    treasurePoint = point
+                    break
+                end
+            end
+            if treasurePoint then
+                local worldPos = bonfireTile.positionToWorld(treasurePoint.position)
+                finalDeck.setPosition(worldPos)
+                finalDeck.setRotation(treasurePoint.rotation or {0,0,0})
+                finalDeck.flip()
+                finalDeck.shuffle()
+                print("[DEBUG] Колода сокровищ размещена на костре")
+            else
+                finalDeck.setPosition(bonfireTile.getPosition())
+                print("[WARN] Не найден snap point TreasureDeck, колода поставлена в центр")
+            end
+        end
+    end, 0.5)
+    return finalDeck
 end
 
 -- ============================================
