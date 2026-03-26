@@ -1,13 +1,14 @@
 -- ============================================
--- СКРИПТ ДЛЯ ОБЪЕКТА-ПАНЕЛИ НАСТРОЕК (исправленный, Core Encounters всегда активны)
+-- СКРИПТ ДЛЯ ОБЪЕКТА-ПАНЕЛИ НАСТРОЕК (с панелью выбора наборов сокровищ)
 -- ============================================
 
 -- Глобальные переменные (без local)
 selectedMiniBoss = "Asylum Demon"
 selectedMainBoss = "Artorias"
 selectedCampaign = "A Hollow Pursuit"
-selectedTileSets = {"Core Map Tiles"}  -- по умолчанию выбран Core Tiles
-selectedEncounterSets = {}              -- дополнительные наборы карт (Core Encounters всегда активны)
+selectedTileSets = {"Core Map Tiles"}                     -- по умолчанию выбран Core Tiles
+selectedEncounterSets = {}                                 -- дополнительные наборы карт стычек
+selectedTreasureSets = {}                                  -- дополнительные наборы карт сокровищ (Core всегда активен)
 currentPlayerCount = 2
 
 function onLoad()
@@ -41,8 +42,9 @@ function openSetupUI()
     selectedMiniBoss = "Asylum Demon"
     selectedMainBoss = "Artorias"
     selectedCampaign = "A Hollow Pursuit"
-    selectedTileSets = {"Core Map Tiles"}  -- по умолчанию выбран Core Tiles
-    selectedEncounterSets = {}              -- дополнительные наборы карт (Core Encounters всегда активны)
+    selectedTileSets = {"Core Map Tiles"}                     -- по умолчанию выбран Core Tiles
+    selectedEncounterSets = {}                                 -- дополнительные наборы карт стычек
+    selectedTreasureSets = {}                                  -- дополнительные наборы карт сокровищ (Core всегда активен)
     currentPlayerCount = 2
 
     local bossData = Global.getTable("bossData")
@@ -107,7 +109,7 @@ function openSetupUI()
 
     -- Формируем XML
     local uiXml = string.format([[
-<VerticalLayout id="setupPanel" width="800" height="500" color="#2b2b2b" padding="10" rectAlignment="MiddleCenter" childForceExpandWidth="true" childForceExpandHeight="false" spacing="10">
+<VerticalLayout id="setupPanel" width="800" height="600" color="#2b2b2b" padding="10" rectAlignment="MiddleCenter" childForceExpandWidth="true" childForceExpandHeight="false" spacing="10">
     <Text fontSize="24" color="white" alignment="MiddleCenter" minHeight="40" preferredHeight="40" flexibleWidth="1">⚙️ Настройка игры Dark Souls</Text>
 
     <HorizontalLayout spacing="20" minHeight="40" preferredHeight="40" childForceExpandWidth="true" childForceExpandHeight="false" childAlignment="MiddleCenter">
@@ -129,7 +131,7 @@ function openSetupUI()
                 </Dropdown>
             </HorizontalLayout>
             <HorizontalLayout spacing="10" minHeight="40" preferredHeight="40" childForceExpandWidth="true" childForceExpandHeight="false" childAlignment="MiddleCenter">
-                <Text fontSize="18" color="white" minWidth="200" preferredWidth="200" alignment="MiddleLeft">Главный босс:</Text>
+                <Text fontSize="18" color="white" minWidth="200" alignment="MiddleLeft">Главный босс:</Text>
                 <Dropdown id="mainBoss" flexibleWidth="1" minHeight="35" preferredHeight="35" scrollSensitivity="6" onValueChanged="onMainBossSelected">
 %s
                 </Dropdown>
@@ -139,7 +141,7 @@ function openSetupUI()
 
     <Panel id="campaignPanel" active="false" flexibleHeight="1" color="#3a3a3a" padding="10">
         <HorizontalLayout spacing="10" minHeight="40" preferredHeight="40" childForceExpandWidth="true" childForceExpandHeight="false" childAlignment="MiddleCenter">
-            <Text fontSize="18" color="white" minWidth="200" preferredWidth="200" alignment="MiddleLeft">Сценарий:</Text>
+            <Text fontSize="18" color="white" minWidth="200" alignment="MiddleLeft">Сценарий:</Text>
             <Dropdown id="campaignChoice" flexibleWidth="1" minHeight="35" preferredHeight="35" onValueChanged="onCampaignSelected">
 %s
             </Dropdown>
@@ -167,6 +169,19 @@ function openSetupUI()
                 <Toggle id="setDarkrootEncounters" text="Darkroot Encounters" textColor="white" isOn="false" onValueChanged="onEncounterSetSelected" flexibleWidth="1" minHeight="30" preferredHeight="30"/>
                 <Toggle id="setIronKeepEncounters" text="Iron Keep Encounters" textColor="white" isOn="false" onValueChanged="onEncounterSetSelected" flexibleWidth="1" minHeight="30" preferredHeight="30"/>
                 <Toggle id="setExplorersEncounters" text="Explorers Encounters" textColor="white" isOn="false" onValueChanged="onEncounterSetSelected" flexibleWidth="1" minHeight="30" preferredHeight="30"/>
+            </HorizontalLayout>
+        </VerticalLayout>
+    </Panel>
+
+    <!-- Панель выбора дополнительных наборов карт сокровищ (Core Treasure всегда активны) -->
+    <Panel id="treasureSetsPanel" active="true" color="#3a3a3a" padding="5" minHeight="50" preferredHeight="50">
+        <VerticalLayout childForceExpandWidth="true" childForceExpandHeight="false" childAlignment="MiddleCenter">
+            <Text fontSize="16" color="white" alignment="MiddleCenter">Дополнительные наборы карт сокровищ:</Text>
+            <HorizontalLayout spacing="10" childAlignment="MiddleCenter" childForceExpandWidth="true">
+                <Toggle id="setDarkrootTreasure" text="Darkroot Treasure" textColor="white" isOn="false" onValueChanged="onTreasureSetSelected" flexibleWidth="1" minHeight="30" preferredHeight="30"/>
+                <Toggle id="setIronKeepTreasure" text="Iron Keep Treasure" textColor="white" isOn="false" onValueChanged="onTreasureSetSelected" flexibleWidth="1" minHeight="30" preferredHeight="30"/>
+                <Toggle id="setExplorersTreasure" text="Explorers Treasure" textColor="white" isOn="false" onValueChanged="onTreasureSetSelected" flexibleWidth="1" minHeight="30" preferredHeight="30"/>
+                <Toggle id="setCharactersTreasure" text="Characters Treasure" textColor="white" isOn="false" onValueChanged="onTreasureSetSelected" flexibleWidth="1" minHeight="30" preferredHeight="30"/>
             </HorizontalLayout>
         </VerticalLayout>
     </Panel>
@@ -230,7 +245,7 @@ function openSetupUI()
             end
         end
 
-        -- Устанавливаем состояния тогглов для дополнительных наборов карт
+        -- Устанавливаем состояния тогглов для дополнительных наборов карт стычек
         for _, setName in ipairs(selectedEncounterSets) do
             if setName == "Darkroot Encounters" then
                 self.UI.setAttribute("setDarkrootEncounters", "isOn", "true")
@@ -238,6 +253,19 @@ function openSetupUI()
                 self.UI.setAttribute("setIronKeepEncounters", "isOn", "true")
             elseif setName == "Explorers Encounters" then
                 self.UI.setAttribute("setExplorersEncounters", "isOn", "true")
+            end
+        end
+
+        -- Устанавливаем состояния тогглов для дополнительных наборов карт сокровищ
+        for _, setName in ipairs(selectedTreasureSets) do
+            if setName == "Darkroot Treasure" then
+                self.UI.setAttribute("setDarkrootTreasure", "isOn", "true")
+            elseif setName == "Iron Keep Treasure" then
+                self.UI.setAttribute("setIronKeepTreasure", "isOn", "true")
+            elseif setName == "Explorers Treasure" then
+                self.UI.setAttribute("setExplorersTreasure", "isOn", "true")
+            elseif setName == "Characters Treasure" then
+                self.UI.setAttribute("setCharactersTreasure", "isOn", "true")
             end
         end
     end, 0.1)  -- задержка 0.1 секунды
@@ -267,14 +295,16 @@ function onModeSelected(_, value, id)
         self.UI.setAttribute("campaignPanel", "active", "false")
         self.UI.setAttribute("campaignToggle", "isOn", "false")
         self.UI.setAttribute("tileSetsPanel", "active", "true")
-        self.UI.setAttribute("encounterSetsPanel", "active", "true")   -- показываем
-        self.UI.setAttribute("setupPanel", "height", "500")            -- увеличиваем высоту
+        self.UI.setAttribute("encounterSetsPanel", "active", "true")
+        self.UI.setAttribute("treasureSetsPanel", "active", "true")   -- показываем
+        self.UI.setAttribute("setupPanel", "height", "600")            -- увеличиваем высоту
     elseif id == "campaignToggle" then
         self.UI.setAttribute("standardPanel", "active", "false")
         self.UI.setAttribute("campaignPanel", "active", "true")
         self.UI.setAttribute("standardToggle", "isOn", "false")
         self.UI.setAttribute("tileSetsPanel", "active", "false")
-        self.UI.setAttribute("encounterSetsPanel", "active", "false")  -- скрываем
+        self.UI.setAttribute("encounterSetsPanel", "active", "false")
+        self.UI.setAttribute("treasureSetsPanel", "active", "false")   -- скрываем
         self.UI.setAttribute("setupPanel", "height", "280")
     end
 end
@@ -283,7 +313,6 @@ end
 function onTileSetSelected(_, value, id)
     print("[DEBUG] onTileSetSelected вызвана, id=" .. id .. ", value=" .. tostring(value))
     if value == "True" then
-        -- Включаем набор
         if id == "setCore" then
             table.insert(selectedTileSets, "Core Map Tiles")
         elseif id == "setDarkwood" then
@@ -293,9 +322,7 @@ function onTileSetSelected(_, value, id)
         elseif id == "setExtra" then
             table.insert(selectedTileSets, "Extra Map Tiles")
         end
-        print(#selectedTileSets)
     else
-        -- Выключаем, но только если это не последний
         if #selectedTileSets > 1 then
             if id == "setCore" then
                 for i, name in ipairs(selectedTileSets) do
@@ -327,34 +354,16 @@ function onTileSetSelected(_, value, id)
                 end
             end
         else
-            -- Нельзя выключить последний, возвращаем тогглу состояние true
             self.UI.setAttribute(id, "isOn", "true")
             return
         end
     end
 
-    -- Обновляем interactable для единственного оставшегося тоггла
-    if #selectedTileSets == 1 then
-        local onlyId = nil
-        if selectedTileSets[1] == "Core Map Tiles" then
-            onlyId = "setCore"
-        elseif selectedTileSets[1] == "Darkwood Tiles" then
-            onlyId = "setDarkwood"
-        elseif selectedTileSets[1] == "Iron Keep Tiles" then
-            onlyId = "setIronKeep"
-        elseif selectedTileSets[1] == "Extra Map Tiles" then
-            onlyId = "setExtra"
-        end
-        if onlyId then
-            self.UI.setAttribute(onlyId, "interactable", "false")
-        end
-    else
-        -- Разблокируем все, чтобы можно было отключать
-        self.UI.setAttribute("setCore", "interactable", "true")
-        self.UI.setAttribute("setDarkwood", "interactable", "true")
-        self.UI.setAttribute("setIronKeep", "interactable", "true")
-        self.UI.setAttribute("setExtra", "interactable", "true")
-    end
+    -- Разблокируем все
+    self.UI.setAttribute("setCore", "interactable", "true")
+    self.UI.setAttribute("setDarkwood", "interactable", "true")
+    self.UI.setAttribute("setIronKeep", "interactable", "true")
+    self.UI.setAttribute("setExtra", "interactable", "true")
 
     print("[DEBUG] Выбранные наборы тайлов: " .. table.concat(selectedTileSets, ", "))
 end
@@ -362,7 +371,6 @@ end
 -- Обработчик выбора дополнительных наборов карт стычек
 function onEncounterSetSelected(_, value, id)
     if value == "True" then
-        -- Включаем набор
         if id == "setDarkrootEncounters" then
             table.insert(selectedEncounterSets, "Darkroot Encounters")
         elseif id == "setIronKeepEncounters" then
@@ -371,7 +379,6 @@ function onEncounterSetSelected(_, value, id)
             table.insert(selectedEncounterSets, "Explorers Encounters")
         end
     else
-        -- Выключаем набор (без проверки на последний)
         if id == "setDarkrootEncounters" then
             for i, name in ipairs(selectedEncounterSets) do
                 if name == "Darkroot Encounters" then
@@ -396,12 +403,65 @@ function onEncounterSetSelected(_, value, id)
         end
     end
 
-    -- Всегда разблокируем тогглы (игрок может отключить любой)
+    -- Всегда разблокируем (никогда не блокируем последний)
     self.UI.setAttribute("setDarkrootEncounters", "interactable", "true")
     self.UI.setAttribute("setIronKeepEncounters", "interactable", "true")
     self.UI.setAttribute("setExplorersEncounters", "interactable", "true")
 
     print("[DEBUG] Выбранные дополнительные наборы карт стычек: " .. table.concat(selectedEncounterSets, ", "))
+end
+
+-- Обработчик выбора дополнительных наборов карт сокровищ
+function onTreasureSetSelected(_, value, id)
+    if value == "True" then
+        if id == "setDarkrootTreasure" then
+            table.insert(selectedTreasureSets, "Darkroot Treasure")
+        elseif id == "setIronKeepTreasure" then
+            table.insert(selectedTreasureSets, "Iron Keep Treasure")
+        elseif id == "setExplorersTreasure" then
+            table.insert(selectedTreasureSets, "Explorers Treasure")
+        elseif id == "setCharactersTreasure" then
+            table.insert(selectedTreasureSets, "Characters Treasure")
+        end
+    else
+        if id == "setDarkrootTreasure" then
+            for i, name in ipairs(selectedTreasureSets) do
+                if name == "Darkroot Treasure" then
+                    table.remove(selectedTreasureSets, i)
+                    break
+                end
+            end
+        elseif id == "setIronKeepTreasure" then
+            for i, name in ipairs(selectedTreasureSets) do
+                if name == "Iron Keep Treasure" then
+                    table.remove(selectedTreasureSets, i)
+                    break
+                end
+            end
+        elseif id == "setExplorersTreasure" then
+            for i, name in ipairs(selectedTreasureSets) do
+                if name == "Explorers Treasure" then
+                    table.remove(selectedTreasureSets, i)
+                    break
+                end
+            end
+        elseif id == "setCharactersTreasure" then
+            for i, name in ipairs(selectedTreasureSets) do
+                if name == "Characters Treasure" then
+                    table.remove(selectedTreasureSets, i)
+                    break
+                end
+            end
+        end
+    end
+
+    -- Всегда разблокируем (никогда не блокируем последний)
+    self.UI.setAttribute("setDarkrootTreasure", "interactable", "true")
+    self.UI.setAttribute("setIronKeepTreasure", "interactable", "true")
+    self.UI.setAttribute("setExplorersTreasure", "interactable", "true")
+    self.UI.setAttribute("setCharactersTreasure", "interactable", "true")
+
+    print("[DEBUG] Выбранные дополнительные наборы карт сокровищ: " .. table.concat(selectedTreasureSets, ", "))
 end
 
 -- Обновление метки слайдера
@@ -424,7 +484,7 @@ function applySetup()
             return
         end
         print("Режим: Стандартный, игроков: " .. playerCount .. ", мини-босс: " .. selectedMiniBoss .. ", главный босс: " .. selectedMainBoss)
-        Global.call("setupStandardGame", {selectedMiniBoss, selectedMainBoss, playerCount, selectedTileSets, selectedEncounterSets})
+        Global.call("setupStandardGame", {selectedMiniBoss, selectedMainBoss, playerCount, selectedTileSets, selectedEncounterSets, selectedTreasureSets})
     else
         if not selectedCampaign then
             broadcastToAll("Выберите сценарий!", {1,0,0})
